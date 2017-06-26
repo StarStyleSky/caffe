@@ -64,7 +64,9 @@ inline void SyncedMemory::to_gpu() {
       CUDA_CHECK(cudaMalloc(&gpu_ptr_, size_));
       own_gpu_data_ = true;
     }
+ //   printf("%p \n lilac %p lilac 1\n",cpu_ptr_,gpu_ptr_ );
     caffe_gpu_memcpy(size_, cpu_ptr_, gpu_ptr_);
+ //   printf("%p \n lilac %p lilac 2\n",cpu_ptr_,gpu_ptr_ );
     head_ = SYNCED;
     break;
   case HEAD_AT_GPU:

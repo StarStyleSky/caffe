@@ -21,9 +21,10 @@ __global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
     int ph = (index / pooled_width) % pooled_height;
     int c = (index / pooled_width / pooled_height) % channels;
     int n = index / pooled_width / pooled_height / channels;
-
+    
     bottom_rois += n * 5;
     int roi_batch_ind = bottom_rois[0];
+    const Dtype * offset_bottom_data = bottom_data + (roi_batch_ind*channels+c)*height*width;
     Dtype roi_start_w = max(0.0, bottom_rois[1]); roi_start_w *= spatial_scale;
     Dtype roi_start_h = max(0.0, bottom_rois[2] );roi_start_h*= spatial_scale;
     Dtype roi_end_w = min(bottom_rois[3], static_cast<Dtype>(width)); roi_end_w*= spatial_scale;
@@ -51,7 +52,7 @@ __global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
     int bottom_index4 = hend* width + wend;
     Dtype u = h_cur - hstart - 0.5 ;
     Dtype v = w_cur - wstart - 0.5 ;
-    top_data[index] = (1 - u)*(1 - v)*bottom_data[bottom_index1] + (1 - u)*(v)*bottom_data[bottom_index2]+(u)*(1 - v)*bottom_data[bottom_index3] + u*v*bottom_data[bottom_index4];
+    top_data[index] = (1 - u)*(1 - v)*offset_bottom_data[bottom_index1] + (1 - u)*(v)*offset_bottom_data[bottom_index2]+(u)*(1 - v)*offset_bottom_data[bottom_index3] + u*v*offset_bottom_data[bottom_index4];
 
   }
 }

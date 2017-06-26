@@ -3,8 +3,10 @@ layer {
   name: "data"
   type: "Input"
   top: "data"
-  input_param { shape: { dim: 200 dim: 3 dim: 224 dim: 224 } }
+  input_param { shape: { dim: 50 dim: 3 dim: 224 dim: 224 } }
 }
+
+
 layer {
   name: "conv1/7x7_s2"
   type: "Convolution"
@@ -57,7 +59,7 @@ layer {
   top: "pool1/norm1"
   lrn_param {
     local_size: 5
-    alpha: 0.0001
+    alpha :0.0001
     beta: 0.75
   }
 }
@@ -133,7 +135,7 @@ layer {
   top: "conv2/norm2"
   lrn_param {
     local_size: 5
-    alpha: 0.0001
+    alpha:0.0001
     beta: 0.75
   }
 }
@@ -578,6 +580,7 @@ layer {
   bottom: "inception_3b/pool_proj"
   top: "inception_3b/output"
 }
+
 layer {
   name: "pool3/3x3_s2"
   type: "Pooling"
@@ -804,6 +807,9 @@ layer {
   bottom: "inception_4a/pool_proj"
   top: "inception_4a/output"
 }
+
+
+
 layer {
   name: "inception_4b/1x1"
   type: "Convolution"
@@ -1448,7 +1454,13 @@ layer {
   bottom: "inception_4d/5x5"
   bottom: "inception_4d/pool_proj"
   top: "inception_4d/output"
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
+  propagate_down: false
 }
+
+
 layer {
   name: "inception_4e/1x1"
   type: "Convolution"
@@ -1474,6 +1486,7 @@ layer {
       value: 0.2
     }
   }
+  
 }
 layer {
   name: "inception_4e/relu_1x1"
@@ -1663,7 +1676,10 @@ layer {
   bottom: "inception_4e/5x5"
   bottom: "inception_4e/pool_proj"
   top: "inception_4e/output"
+  
 }
+
+
 layer {
   name: "pool4/3x3_s2"
   type: "Pooling"
@@ -2105,10 +2121,162 @@ layer {
   bottom: "inception_5b/pool_proj"
   top: "inception_5b/output"
 }
+
+#---------------------------------------------adding kernel attention--------------------------------------------------
+
+layer {
+  name: "inception_5a_att_conv1"
+  type: "Convolution" 
+  bottom: "inception_5a/output"
+  top: "inception_5a_att_conv1"
+  param {
+    lr_mult: 0.01
+    decay_mult: 0
+  }
+  
+  convolution_param {
+    num_output: 256
+    kernel_size: 3
+	stride : 2
+	pad :1
+	bias_term: false
+    weight_filler {
+      type: "gaussian"
+      std: 0.001
+    }
+  }
+  propagate_down: false
+}
+layer {
+  name: "inception_5a_att_conv1_relu"
+  type: "Sigmoid"
+  bottom: "inception_5a_att_conv1"
+  top: "inception_5a_att_conv1"
+}
+layer {
+  name: "inception_5a_att_conv2"
+  type: "Convolution"
+  bottom: "inception_5a_att_conv1"
+  top: "inception_5a_att_conv2"
+  param {
+    lr_mult: 0.01
+    decay_mult: 0
+  }
+  convolution_param {
+    num_output: 512
+    kernel_size: 3
+	stride : 1
+	pad :1
+    weight_filler {
+      type: "gaussian"
+      std: 0.001
+    }
+    bias_term: false
+  }
+  #
+}
+layer {
+  name: "inception_5a_att_conv2_relu"
+  type: "Sigmoid"
+  bottom: "inception_5a_att_conv2"
+  top: "inception_5a_att_conv2"
+}
+layer {
+  name: "inception_5a_att_conv3"
+  type: "Convolution"
+  bottom: "inception_5a_att_conv2"
+  top: "inception_5a_att_conv3"
+  param {
+    lr_mult: 0.01
+    decay_mult: 0
+  }
+
+  convolution_param {
+    num_output: 1024
+    kernel_size: 3
+	stride : 1
+	pad :1
+    weight_filler {
+      type: "gaussian"
+      std: 0.001
+    }
+    bias_term: false
+  }
+}
+
+layer{
+  name:'ProvideROI'
+   bottom:'inception_5a_att_conv3'
+   top:'rois'
+   type:'Python'
+     python_param {
+    module: 'provide_roi_layer'
+    layer: 'ProvideROILayer'
+  }
+
+}
+layer {
+  name: "inception_5a_att_resize"
+  type: "ROIPooling"
+  bottom: "inception_5a_att_conv3"
+  bottom:'rois'
+  top: "inception_5a_att_kernel"
+  roi_pooling_param {
+    pooled_w: 3
+    pooled_h: 3
+    spatial_scale: 1.0 # 1/16
+  }
+}
+
+
+layer {
+  name: 'inception_5a_att_kernel_bias'
+  type: 'Python'
+  bottom: 'inception_5a_att_kernel'
+  top: 'inception_5a_att_kernel'
+  python_param {
+    module: 'kernel_bias_layer'
+    layer: 'KernelBiasLayer'
+  }
+}
+
+layer {
+    bottom: "inception_5b/output"
+    bottom:"inception_5a_att_kernel"
+    top: "inception_attention_5b"
+    name: "inception_attention_5b"
+    type: "CrossConvolution"
+    convolution_param {
+        num_output: 1024 # K
+        kernel_size: 3
+		group: 1024
+        stride : 1
+        pad:1
+    }
+}
+#layer {
+#  name: 'check_eq'
+#  type: 'Python'
+#  bottom: 'inception_attention_5b'
+#  bottom:'inception_5b/output'
+#  top: 'check_eq'
+#  python_param {
+#    module: 'check_equal_layer'
+#    layer: 'KernelBiasLayer'
+#  }
+#}
+#layer{
+ #   name:'silence'
+#	bottom:'check_eq'
+#	type:'Silence'
+#	}
+
+#------------------------------------------------------------------------------------
+
 layer {
   name: "pool5/7x7_s1"
   type: "Pooling"
-  bottom: "inception_5b/output"
+  bottom: "inception_attention_5b"
   top: "pool5/7x7_s1"
   pooling_param {
     pool: AVE
@@ -2116,6 +2284,7 @@ layer {
     stride: 1
   }
 }
+
 layer {
   name: "pool5/drop_7x7_s1"
   type: "Dropout"
@@ -2149,6 +2318,7 @@ layer {
     }
   }
 }
+
 layer {
   name: "prob"
   type: "Softmax"

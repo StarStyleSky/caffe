@@ -38,10 +38,12 @@ void InnerProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       weight_shape[1] = K_;
     }
     this->blobs_[0].reset(new Blob<Dtype>(weight_shape));
+    //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
     // fill the weights
     shared_ptr<Filler<Dtype> > weight_filler(GetFiller<Dtype>(
         this->layer_param_.inner_product_param().weight_filler()));
     weight_filler->Fill(this->blobs_[0].get());
+    //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
     // If necessary, intiialize and fill the bias term
     if (bias_term_) {
       vector<int> bias_shape(1, N_);
@@ -58,9 +60,11 @@ template <typename Dtype>
 void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   // Figure out the dimensions
+  //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
   const int axis = bottom[0]->CanonicalAxisIndex(
       this->layer_param_.inner_product_param().axis());
   const int new_K = bottom[0]->count(axis);
+  //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
   CHECK_EQ(K_, new_K)
       << "Input size incompatible with inner product parameters.";
   // The first "axis" dimensions are independent inner products; the total
@@ -69,9 +73,12 @@ void InnerProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   // The top shape will be the bottom shape with the flattened axes dropped,
   // and replaced by a single axis with dimension num_output (N_).
   vector<int> top_shape = bottom[0]->shape();
+  //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
   top_shape.resize(axis + 1);
+  //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
   top_shape[axis] = N_;
   top[0]->Reshape(top_shape);
+  //printf("%p \nlilac\n",this->blobs_[0]->gpu_data());
   // Set up the bias multiplier
   if (bias_term_) {
     vector<int> bias_shape(1, M_);

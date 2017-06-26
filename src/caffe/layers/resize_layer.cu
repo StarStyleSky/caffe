@@ -16,6 +16,7 @@ __global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
     const int width, const int pooled_height, const int pooled_width, Dtype* top_data) {
   CUDA_KERNEL_LOOP(index, nthreads) {
     // (n, c, ph, pw) is an element in the pooled output
+    
     int pw = index % pooled_width;
     int ph = (index / pooled_width) % pooled_height;
     int c = (index / pooled_width / pooled_height) % channels;
@@ -24,7 +25,7 @@ __global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
     Dtype roi_start_h = 0.0;roi_start_h*= spatial_scale;
     Dtype roi_end_w = static_cast<Dtype>(width); roi_end_w*= spatial_scale;
     Dtype roi_end_h = static_cast<Dtype>(height); roi_end_h*= spatial_scale;
-   
+    const Dtype* bottom_data_cur = bottom_data + (n*channels+c)* height * width;
     // Force malformed ROIs to be 1x1
     Dtype roi_width = max(roi_end_w - roi_start_w , 1.0);
     Dtype roi_height = max(roi_end_h - roi_start_h , 1.0);
@@ -75,7 +76,7 @@ __global__ void ROIPoolForward(const int nthreads, const Dtype* bottom_data,
     //printf("%d,%d\n",bottom_index1,bottom_index4);
 
 
-    top_data[index] = (1 - u)*(1 - v)*bottom_data[bottom_index1] + (1 - u)*(v)*bottom_data[bottom_index2]+(u)*(1 - v)*bottom_data[bottom_index3] + u*v*bottom_data[bottom_index4];
+    top_data[index] = (1 - u)*(1 - v)*bottom_data_cur[bottom_index1] + (1 - u)*(v)*bottom_data_cur[bottom_index2]+(u)*(1 - v)*bottom_data_cur[bottom_index3] + u*v*bottom_data_cur[bottom_index4];
   }
 }
 
@@ -87,6 +88,7 @@ void ResizeLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   Dtype* top_data = top[0]->mutable_gpu_data();
  // printf("resize Forward_gpu\n");
   int count = top[0]->count();
+  printf("%d\n",count);
   // NOLINT_NEXT_LINE(whitespace/operators)
   ROIPoolForward<Dtype><<<CAFFE_GET_BLOCKS(count), CAFFE_CUDA_NUM_THREADS>>>(
       count, bottom_data, spatial_scale_, channels_, height_, width_,

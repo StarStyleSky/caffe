@@ -2,7 +2,7 @@
 #include <cfloat>
 #include <vector>
 
-#include "caffe/layers/resize_layer.hpp"
+#include "caffe/layers/roi_align_v2_layer.hpp"
 
 using std::max;
 using std::min;
@@ -12,7 +12,7 @@ using std::ceil;
 namespace caffe {
 
 template <typename Dtype>
-void ResizeLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
+void ROIAlignV2Layer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   ROIPoolingParameter roi_pool_param = this->layer_param_.roi_pooling_param();
   CHECK_GT(roi_pool_param.pooled_h(), 0)
@@ -21,38 +21,42 @@ void ResizeLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       << "pooled_w must be > 0";
   pooled_height_ = roi_pool_param.pooled_h();
   pooled_width_ = roi_pool_param.pooled_w();
-  spatial_scale_ = 1.0;
+  spatial_scale_ = roi_pool_param.spatial_scale();
   LOG(INFO) << "Spatial scale: " << spatial_scale_;
 }
 
 template <typename Dtype>
-void ResizeLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
+void ROIAlignV2Layer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   channels_ = bottom[0]->channels();
   height_ = bottom[0]->height();
   width_ = bottom[0]->width();
-  top[0]->Reshape(bottom[0]->shape(0), channels_, pooled_height_,
+  top[0]->Reshape(bottom[1]->num(), channels_, pooled_height_,
+      pooled_width_);
+  max_idx_x_.Reshape(bottom[1]->num(), channels_, pooled_height_,
+      pooled_width_);
+  max_idx_y_.Reshape(bottom[1]->num(), channels_, pooled_height_,
       pooled_width_);
 }
 
 template <typename Dtype>
-void ResizeLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
+void ROIAlignV2Layer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   NOT_IMPLEMENTED;
 }
 
 template <typename Dtype>
-void ResizeLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
+void ROIAlignV2Layer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   NOT_IMPLEMENTED;
 }
 
 
 #ifdef CPU_ONLY
-STUB_GPU(ResizeLayer);
+STUB_GPU(ROIAlignV2Layer);
 #endif
 
-INSTANTIATE_CLASS(ResizeLayer);
-REGISTER_LAYER_CLASS(Resize);
+INSTANTIATE_CLASS(ROIAlignV2Layer);
+REGISTER_LAYER_CLASS(ROIAlignV2);
 
 }  // namespace caffe
